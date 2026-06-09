@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resolved BAM Track Spec",
+  "description": "A BAM track spec with all file references resolved to URLs",
+  "type": "object",
+  "required": ["name", "bam_url", "bai_url"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "bam_url": { "type": "string", "format": "uri" },
+    "bai_url": { "type": "string", "format": "uri" },
+    "category": { "type": "array", "items": { "type": "string" } }
+  }
+}

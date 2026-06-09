@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resolved VCF Track Spec",
+  "description": "A bgzipped VCF track spec with all file references resolved to URLs",
+  "type": "object",
+  "required": ["name", "vcf_gz_url", "tbi_url"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "vcf_gz_url": { "type": "string", "format": "uri" },
+    "tbi_url": { "type": "string", "format": "uri" },
+    "category": { "type": "array", "items": { "type": "string" } }
+  }
+}

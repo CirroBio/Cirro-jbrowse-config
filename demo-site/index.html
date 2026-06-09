@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JBrowse2 Genome Browser</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #root { height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@jbrowse/react-linear-genome-view2/dist/react-linear-genome-view.umd.production.min.js" crossorigin></script>
+  <script>
+    const { createViewState, JBrowseLinearGenomeView } = JBrowseReactLinearGenomeView;
+
+    fetch("config.json")
+      .then(r => r.json())
+      .then(config => {
+        const state = createViewState({
+          assembly: config.assemblies[0],
+          tracks: config.tracks,
+          defaultSession: config.defaultSession,
+          configuration: config.configuration || {},
+          location: config.defaultSession?.views?.[0]?.displayedRegions?.[0]
+            ? `${config.defaultSession.views[0].displayedRegions[0].refName}:1..1000000`
+            : undefined,
+        });
+
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(React.createElement(JBrowseLinearGenomeView, { viewState: state }));
+      })
+      .catch(err => {
+        document.getElementById("root").innerHTML =
+          `<pre style="color:red;padding:1em">Failed to load config.json:\n${err}</pre>`;
+      });
+  </script>
+</body>
+</html>

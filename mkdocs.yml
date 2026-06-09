@@ -1,0 +1,8 @@
+site_name: cirro-jbrowse-config
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Track Types: track-types.md
+  - Cirro Integration: cirro-integration.md

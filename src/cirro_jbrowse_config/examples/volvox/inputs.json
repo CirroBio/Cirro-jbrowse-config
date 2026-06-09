@@ -1,0 +1,51 @@
+{
+  "defaultLocation": "ctgA:1..50001",
+  "assembly": {
+    "name": "volvox",
+    "sequence": {
+      "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.fa"
+    },
+    "fai": {
+      "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.fa.fai"
+    }
+  },
+  "tracks": [
+    {
+      "type": "bam",
+      "name": "Volvox Alignments",
+      "file": {
+        "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox-sorted.bam"
+      },
+      "index": {
+        "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox-sorted.bam.bai"
+      }
+    },
+    {
+      "type": "bigwig",
+      "name": "Volvox Coverage",
+      "file": {
+        "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.bw"
+      }
+    },
+    {
+      "type": "vcf",
+      "name": "Volvox Variants",
+      "file": {
+        "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.test.vcf.gz"
+      },
+      "index": {
+        "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.test.vcf.gz.tbi"
+      }
+    },
+    {
+      "type": "gff",
+      "name": "Volvox Genes",
+      "file": {
+        "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.sort.gff3.gz"
+      },
+      "index": {
+        "url": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.sort.gff3.gz.tbi"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resolved BigWig Track Spec",
+  "description": "A BigWig track spec with all file references resolved to URLs",
+  "type": "object",
+  "required": ["name", "bigwig_url"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "bigwig_url": { "type": "string", "format": "uri" },
+    "category": { "type": "array", "items": { "type": "string" } }
+  }
+}

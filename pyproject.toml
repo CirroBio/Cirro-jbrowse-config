@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cirro-jbrowse-config"
+version = "0.1.0"
+description = "Generate JBrowse2 static genome browser configurations from Cirro datasets"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "questionary>=2.0",
+    "jsonschema>=4.17",
+    "jinja2>=3.1",
+    "cirro>=1.10",
+    "boto3>=1.28",
+    "rich>=13.0",
+]
+
+[project.scripts]
+cirro-jbrowse-config = "cirro_jbrowse_config.cli.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.4",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"cirro_jbrowse_config.schemas" = ["*.json"]
+"cirro_jbrowse_config.schemas.tracks" = ["*.json"]
+"cirro_jbrowse_config.templates" = ["*.j2"]
+"cirro_jbrowse_config.examples.volvox" = ["*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

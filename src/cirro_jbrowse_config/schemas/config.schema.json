@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JBrowse2 Config",
+  "type": "object",
+  "required": ["assemblies", "tracks"],
+  "properties": {
+    "configuration": { "type": "object" },
+    "assemblies": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Assembly" }
+    },
+    "tracks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Track" }
+    },
+    "defaultSession": { "type": "object" },
+    "defaultLocation": { "type": "string" },
+    "aggregateTextSearchAdapters": { "type": "array" }
+  },
+  "$defs": {
+    "UriLocation": {
+      "type": "object",
+      "required": ["uri"],
+      "properties": {
+        "uri": { "type": "string" },
+        "locationType": { "type": "string" }
+      }
+    },
+    "Assembly": {
+      "type": "object",
+      "required": ["name", "sequence"],
+      "properties": {
+        "name": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "sequence": {
+          "type": "object",
+          "required": ["type", "trackId", "adapter"],
+          "properties": {
+            "type": { "type": "string" },
+            "trackId": { "type": "string" },
+            "adapter": { "type": "object" }
+          }
+        }
+      }
+    },
+    "Track": {
+      "type": "object",
+      "required": ["trackId", "name", "assemblyNames", "type", "adapter"],
+      "properties": {
+        "trackId": { "type": "string" },
+        "name": { "type": "string" },
+        "assemblyNames": { "type": "array", "items": { "type": "string" } },
+        "type": { "type": "string" },
+        "adapter": { "type": "object" },
+        "category": { "type": "array" }
+      }
+    }
+  }
+}

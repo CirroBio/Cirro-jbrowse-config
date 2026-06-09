@@ -1,0 +1,105 @@
+{
+  "assemblies": [
+    {
+      "name": "volvox",
+      "sequence": {
+        "type": "ReferenceSequenceTrack",
+        "trackId": "volvox_reference_sequence",
+        "adapter": {
+          "type": "IndexedFastaAdapter",
+          "fastaLocation": {
+            "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.fa",
+            "locationType": "UriLocation"
+          },
+          "faiLocation": {
+            "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.fa.fai",
+            "locationType": "UriLocation"
+          }
+        }
+      }
+    }
+  ],
+  "tracks": [
+    {
+      "type": "AlignmentsTrack",
+      "trackId": "volvox_alignments",
+      "name": "Volvox Alignments",
+      "assemblyNames": [
+        "volvox"
+      ],
+      "adapter": {
+        "type": "BamAdapter",
+        "bamLocation": {
+          "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox-sorted.bam",
+          "locationType": "UriLocation"
+        },
+        "index": {
+          "indexType": "BAI",
+          "location": {
+            "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox-sorted.bam.bai",
+            "locationType": "UriLocation"
+          }
+        }
+      }
+    },
+    {
+      "type": "QuantitativeTrack",
+      "trackId": "volvox_coverage",
+      "name": "Volvox Coverage",
+      "assemblyNames": [
+        "volvox"
+      ],
+      "adapter": {
+        "type": "BigWigAdapter",
+        "bigWigLocation": {
+          "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.bw",
+          "locationType": "UriLocation"
+        }
+      }
+    },
+    {
+      "type": "VariantTrack",
+      "trackId": "volvox_variants",
+      "name": "Volvox Variants",
+      "assemblyNames": [
+        "volvox"
+      ],
+      "adapter": {
+        "type": "VcfTabixAdapter",
+        "vcfGzLocation": {
+          "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.test.vcf.gz",
+          "locationType": "UriLocation"
+        },
+        "index": {
+          "indexType": "TBI",
+          "location": {
+            "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.test.vcf.gz.tbi",
+            "locationType": "UriLocation"
+          }
+        }
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "volvox_genes",
+      "name": "Volvox Genes",
+      "assemblyNames": [
+        "volvox"
+      ],
+      "adapter": {
+        "type": "Gff3TabixAdapter",
+        "gffGzLocation": {
+          "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.sort.gff3.gz",
+          "locationType": "UriLocation"
+        },
+        "index": {
+          "indexType": "TBI",
+          "location": {
+            "uri": "https://raw.githubusercontent.com/GMOD/jbrowse-components/main/test_data/volvox/volvox.sort.gff3.gz.tbi",
+            "locationType": "UriLocation"
+          }
+        }
+      }
+    }
+  ]
+}

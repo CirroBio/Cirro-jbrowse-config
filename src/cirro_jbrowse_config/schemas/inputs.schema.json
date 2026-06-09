@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JBrowse Inputs",
+  "description": "Input file specifications for JBrowse2 config generation",
+  "type": "object",
+  "required": ["assembly", "tracks"],
+  "additionalProperties": false,
+  "properties": {
+    "assembly": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "description": "Assembly name, e.g. hg38" },
+        "sequence": { "$ref": "#/$defs/FileRef", "description": "FASTA or bgzipped FASTA file" },
+        "fai": { "$ref": "#/$defs/FileRef", "description": ".fai index (required for IndexedFastaAdapter)" },
+        "gzi": { "$ref": "#/$defs/FileRef", "description": ".gzi index (required for BgzipFastaAdapter)" },
+        "chrom_sizes": { "$ref": "#/$defs/FileRef", "description": "chrom.sizes fallback if no FASTA" }
+      }
+    },
+    "tracks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TrackSpec" }
+    },
+    "defaultLocation": {
+      "type": "string",
+      "description": "Initial genome browser location, e.g. ctgA:1..50000. If set, the browser opens here directly without showing the location picker."
+    }
+  },
+  "$defs": {
+    "CirroFileRef": {
+      "type": "object",
+      "required": ["project_id", "dataset_id", "file_path"],
+      "additionalProperties": false,
+      "properties": {
+        "project_id": { "type": "string" },
+        "dataset_id": { "type": "string" },
+        "file_path": { "type": "string" }
+      }
+    },
+    "UrlFileRef": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string" }
+      }
+    },
+    "FileRef": {
+      "oneOf": [
+        { "$ref": "#/$defs/CirroFileRef" },
+        { "$ref": "#/$defs/UrlFileRef" }
+      ]
+    },
+    "TrackSpec": {
+      "type": "object",
+      "required": ["type", "name", "file"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["bam", "cram", "bigwig", "vcf", "gff"] },
+        "name": { "type": "string" },
+        "file": { "$ref": "#/$defs/FileRef" },
+        "index": { "$ref": "#/$defs/FileRef" },
+        "sequence_adapter": {
+          "type": "object",
+          "description": "CRAM only: reference FASTA adapter",
+          "properties": {
+            "fasta": { "$ref": "#/$defs/FileRef" },
+            "fai": { "$ref": "#/$defs/FileRef" },
+            "gzi": { "$ref": "#/$defs/FileRef" }
+          }
+        }
+      }
+    }
+  }
+}

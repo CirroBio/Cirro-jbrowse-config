@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resolved GFF Track Spec",
+  "description": "A bgzipped GFF3 track spec with all file references resolved to URLs",
+  "type": "object",
+  "required": ["name", "gff_gz_url", "tbi_url"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "gff_gz_url": { "type": "string", "format": "uri" },
+    "tbi_url": { "type": "string", "format": "uri" },
+    "category": { "type": "array", "items": { "type": "string" } }
+  }
+}

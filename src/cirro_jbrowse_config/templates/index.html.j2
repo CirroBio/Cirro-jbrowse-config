@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JBrowse2 Genome Browser</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #root { height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <!-- The JBrowse2 UMD bundle is self-contained: it bundles its own React 18.
+       Do NOT load React/ReactDOM from CDN — a second copy causes hook dispatcher conflicts. -->
+  <script src="https://unpkg.com/@jbrowse/react-linear-genome-view2/dist/react-linear-genome-view.umd.production.min.js" crossorigin></script>
+  <script>
+    const { createViewState, JBrowseLinearGenomeView, React, createRoot } = JBrowseReactLinearGenomeView;
+
+    fetch("{{ config_json_path }}")
+      .then(r => r.json())
+      .then(config => {
+        const state = createViewState({
+          assembly: config.assemblies[0],
+          tracks: config.tracks,
+          configuration: config.configuration || {},
+          location: config.defaultLocation || undefined,
+        });
+
+        // Activate all configured tracks using the embedded component API.
+        // Passing defaultSession with full JBrowse2 session format causes
+        // "ViewType undefined" errors in the react-linear-genome-view2 bundle.
+        if (config.tracks && config.tracks.length > 0) {
+          config.tracks.forEach(t => {
+            try { state.session.view.showTrack(t.trackId); } catch (_) {}
+          });
+        }
+
+        const root = createRoot(document.getElementById("root"));
+        root.render(React.createElement(JBrowseLinearGenomeView, { viewState: state }));
+      })
+      .catch(err => {
+        document.getElementById("root").innerHTML =
+          `<pre style="color:red;padding:1em">Failed to load config.json:\n${err}</pre>`;
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resolved CRAM Track Spec",
+  "description": "A CRAM track spec with all file references resolved to URLs",
+  "type": "object",
+  "required": ["name", "cram_url", "crai_url", "sequence_adapter"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string" },
+    "cram_url": { "type": "string", "format": "uri" },
+    "crai_url": { "type": "string", "format": "uri" },
+    "sequence_adapter": {
+      "type": "object",
+      "required": ["fasta_url", "fai_url"],
+      "additionalProperties": false,
+      "properties": {
+        "fasta_url": { "type": "string", "format": "uri" },
+        "fai_url": { "type": "string", "format": "uri" },
+        "gzi_url": { "type": "string", "format": "uri" }
+      }
+    },
+    "category": { "type": "array", "items": { "type": "string" } }
+  }
+}
