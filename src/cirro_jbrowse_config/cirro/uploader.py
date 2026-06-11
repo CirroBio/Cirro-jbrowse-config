@@ -20,7 +20,7 @@ class DatasetUploader:
     ) -> str:
         """Upload source_dir as a new Cirro dataset. Returns the dataset ID."""
         project = self.portal.get_project(project_id)
-        process = self._get_ingest_process()
+        process = self.portal.get_process_by_name("Files", ingest=True)
         dataset = project.upload_dataset(
             name=dataset_name,
             description=description,
@@ -28,17 +28,3 @@ class DatasetUploader:
             upload_folder=str(Path(source_dir)),
         )
         return dataset.id
-
-    def _get_ingest_process(self):
-        try:
-            return self.portal.get_process_by_name("Upload Files", ingest=True)
-        except DataPortalAssetNotFound:
-            processes = list(self.portal.list_processes(ingest=True))
-            if not processes:
-                raise RuntimeError("No ingest processes found in this Cirro instance")
-            chosen = processes[0]
-            print(
-                f'Warning: process "Upload Files" not found; falling back to "{chosen.name}"',
-                file=sys.stderr,
-            )
-            return chosen

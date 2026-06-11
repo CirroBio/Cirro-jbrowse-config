@@ -82,6 +82,7 @@ def select(
 ) -> None:
     """Interactively select files from Cirro and write inputs.json."""
     try:
+        click.echo("Connecting to Cirro...")
         portal = _get_portal()
         selector = FileSelector(portal)
 
@@ -102,6 +103,7 @@ def select(
 
             assembly_fasta = _parse_fasta(fasta) if fasta else None
 
+            click.echo(f"Building inputs file for {len(parsed_tracks)} track(s)...")
             selector.run_non_interactive(
                 output_path=output,
                 assembly_name=assembly,
@@ -131,6 +133,7 @@ def demo(output_dir: str, port: int) -> None:
     No Cirro account or authentication required.
     """
     try:
+        click.echo("Generating demo site...")
         data = json.loads(
             files("cirro_jbrowse_config.examples.volvox").joinpath("inputs.json").read_text()
         )
@@ -154,13 +157,16 @@ def demo(output_dir: str, port: int) -> None:
 def generate(inputs: str, output_dir: str) -> None:
     """Generate JBrowse2 static site assets from inputs.json."""
     try:
+        click.echo(f"Reading inputs from {inputs}...")
         inputs_path = Path(inputs)
         if not inputs_path.exists():
             raise FileNotFoundError(f"inputs file not found: {inputs}")
         data = json.loads(inputs_path.read_text())
 
+        click.echo("Connecting to Cirro...")
         portal = _get_portal()
         url_resolver = make_presigned_resolver(portal)
+        click.echo("Resolving file URLs and generating site assets...")
         out = generate_assets(data, output_dir, url_resolver)
         click.echo(f"Generated site at {out}")
     except FileNotFoundError as e:
@@ -178,13 +184,16 @@ def generate(inputs: str, output_dir: str) -> None:
 def serve(inputs: str, output_dir: str, port: int) -> None:
     """Generate and serve the JBrowse2 static site locally for preview."""
     try:
+        click.echo(f"Reading inputs from {inputs}...")
         inputs_path = Path(inputs)
         if not inputs_path.exists():
             raise FileNotFoundError(f"inputs file not found: {inputs}")
         data = json.loads(inputs_path.read_text())
 
+        click.echo("Connecting to Cirro...")
         portal = _get_portal()
         url_resolver = make_presigned_resolver(portal)
+        click.echo("Resolving file URLs and generating site assets...")
         out = generate_assets(data, output_dir, url_resolver)
 
         serve_dir = str(Path(out).resolve())
@@ -212,15 +221,19 @@ def serve(inputs: str, output_dir: str, port: int) -> None:
 def upload(inputs: str, output_dir: str, project_id: str, name: str, description: str) -> None:
     """Generate with render-service URLs and upload as a new Cirro dataset."""
     try:
+        click.echo(f"Reading inputs from {inputs}...")
         inputs_path = Path(inputs)
         if not inputs_path.exists():
             raise FileNotFoundError(f"inputs file not found: {inputs}")
         data = json.loads(inputs_path.read_text())
 
+        click.echo("Connecting to Cirro...")
         portal = _get_portal()
         url_resolver = make_render_service_resolver(portal)
+        click.echo("Resolving file URLs and generating site assets...")
         out = generate_assets(data, output_dir, url_resolver)
 
+        click.echo(f"Uploading to Cirro project {project_id}...")
         dataset_id = DatasetUploader(portal).upload(out, project_id, name, description)
         click.echo(f"Uploaded dataset: {dataset_id}")
     except FileNotFoundError as e:

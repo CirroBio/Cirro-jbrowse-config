@@ -11,11 +11,11 @@
 </head>
 <body>
   <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@jbrowse/react-linear-genome-view2/dist/react-linear-genome-view.umd.production.min.js" crossorigin></script>
+  <!-- The JBrowse2 UMD bundle is self-contained: it bundles its own React 18.
+       Do NOT load React/ReactDOM from CDN — a second copy causes hook dispatcher conflicts. -->
+  <script src="./react-linear-genome-view.umd.production.min.js"></script>
   <script>
-    const { createViewState, JBrowseLinearGenomeView } = JBrowseReactLinearGenomeView;
+    const { createViewState, JBrowseLinearGenomeView, React, createRoot } = JBrowseReactLinearGenomeView;
 
     fetch("config.json")
       .then(r => r.json())
@@ -23,14 +23,20 @@
         const state = createViewState({
           assembly: config.assemblies[0],
           tracks: config.tracks,
-          defaultSession: config.defaultSession,
           configuration: config.configuration || {},
-          location: config.defaultSession?.views?.[0]?.displayedRegions?.[0]
-            ? `${config.defaultSession.views[0].displayedRegions[0].refName}:1..1000000`
-            : undefined,
+          location: config.defaultLocation || undefined,
         });
 
-        const root = ReactDOM.createRoot(document.getElementById("root"));
+        // Activate all configured tracks using the embedded component API.
+        // Passing defaultSession with full JBrowse2 session format causes
+        // "ViewType undefined" errors in the react-linear-genome-view2 bundle.
+        if (config.tracks && config.tracks.length > 0) {
+          config.tracks.forEach(t => {
+            try { state.session.view.showTrack(t.trackId); } catch (_) {}
+          });
+        }
+
+        const root = createRoot(document.getElementById("root"));
         root.render(React.createElement(JBrowseLinearGenomeView, { viewState: state }));
       })
       .catch(err => {

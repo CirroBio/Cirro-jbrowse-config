@@ -12,6 +12,7 @@ from cirro_jbrowse_config.cirro import (
     make_presigned_resolver,
     make_render_service_resolver,
     RENDER_SERVICE_WORKER_PREFIX,
+    PUBWEB_S3_PREFIX,
 )
 from cirro_jbrowse_config.cirro.selector import FileSelector
 from cirro_jbrowse_config.cirro.uploader import DatasetUploader
@@ -74,6 +75,11 @@ class TestMakePresignedResolver:
         assert result == "https://example.com/sample.bam"
         mock_portal.get_project.assert_not_called()
 
+    def test_pubweb_url_file_ref_uses_render_service(self):
+        resolver = make_presigned_resolver(MagicMock())
+        result = resolver({"url": "s3://pubweb-references/genomes/hg38.fa"})
+        assert result == RENDER_SERVICE_WORKER_PREFIX + "pubweb-references/genomes/hg38.fa"
+
     def test_bucket_and_key_with_nested_key(self):
         mock_portal, _, _, _ = _make_portal_with_file(
             "p", "d", "f.bam", "s3://bucket/a/b/c/file.bam"
@@ -113,6 +119,13 @@ class TestMakeRenderServiceResolver:
         url = "https://example.com/sample.bigwig"
         result = resolver({"url": url})
         assert result == url
+        mock_portal.get_project.assert_not_called()
+
+    def test_render_service_pubweb_url_file_ref(self):
+        mock_portal = MagicMock()
+        resolver = make_render_service_resolver(mock_portal)
+        result = resolver({"url": "s3://pubweb-references/genomes/hg38.fa"})
+        assert result == RENDER_SERVICE_WORKER_PREFIX + "pubweb-references/genomes/hg38.fa"
         mock_portal.get_project.assert_not_called()
 
     def test_prefix_format(self):
@@ -412,46 +425,7 @@ class TestDatasetUploader:
 
         uploader.upload(tmp_path, "proj-abc", "Config")
 
-        mock_portal.get_process_by_name.assert_called_once_with("Upload Files", ingest=True)
-
-    def test_upload_falls_back_when_process_not_found(self, tmp_path, capsys):
-        from cirro.sdk.exceptions import DataPortalAssetNotFound
-
-        fallback_process = MagicMock()
-        fallback_process.name = "Generic Ingest"
-
-        mock_dataset = MagicMock()
-        mock_dataset.id = "fallback-ds-id"
-
-        mock_project = MagicMock()
-        mock_project.upload_dataset.return_value = mock_dataset
-
-        mock_portal = MagicMock()
-        mock_portal.get_project.return_value = mock_project
-        mock_portal.get_process_by_name.side_effect = DataPortalAssetNotFound("not found")
-        mock_portal.list_processes.return_value = [fallback_process]
-
-        uploader = DatasetUploader(mock_portal)
-        dataset_id = uploader.upload(tmp_path, "proj-abc", "Config")
-
-        assert dataset_id == "fallback-ds-id"
-        mock_portal.list_processes.assert_called_once_with(ingest=True)
-
-        captured = capsys.readouterr()
-        assert "Warning" in captured.err
-        assert "Generic Ingest" in captured.err
-
-    def test_upload_raises_when_no_ingest_processes(self, tmp_path):
-        from cirro.sdk.exceptions import DataPortalAssetNotFound
-
-        mock_portal = MagicMock()
-        mock_portal.get_process_by_name.side_effect = DataPortalAssetNotFound("not found")
-        mock_portal.list_processes.return_value = []
-
-        uploader = DatasetUploader(mock_portal)
-
-        with pytest.raises(RuntimeError, match="No ingest processes"):
-            uploader.upload(tmp_path, "proj-abc", "Config")
+        mock_portal.get_process_by_name.assert_called_once_with("Files", ingest=True)
 
     def test_default_description_is_empty_string(self, tmp_path):
         mock_portal, mock_project, mock_process, _ = self._make_portal_with_process()

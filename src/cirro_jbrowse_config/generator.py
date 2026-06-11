@@ -94,7 +94,7 @@ def _resolve_assembly(assembly_spec: dict, url_resolver: Callable[[dict], str]) 
 
 
 _DISPLAY_TYPE: dict[str, str] = {
-    "AlignmentsTrack": "LinearAlignmentsDisplay",
+    "AlignmentsTrack": "LinearPileupDisplay",
     "QuantitativeTrack": "LinearWiggleDisplay",
     "VariantTrack": "LinearVariantDisplay",
     "FeatureTrack": "LinearBasicDisplay",
@@ -177,5 +177,8 @@ def generate_assets(
     template = env.get_template("index.html.j2")
     html = template.render(config_json_path="config.json")
     (output_path / "index.html").write_text(html)
+
+    from cirro_jbrowse_config.jbrowse_dist import get_bundle
+    get_bundle(output_path)
 
     return output_path

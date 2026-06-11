@@ -12,6 +12,34 @@ from cirro_jbrowse_config.schemas import validate
 
 TRACK_TYPE_CHOICES = ["bam", "cram", "bigwig", "vcf", "gff"]
 
+# Extensions that can be loaded as tracks in JBrowse2.
+_TRACK_EXTENSIONS = {
+    ".bam",
+    ".cram",
+    ".bw",
+    ".bigwig",
+    ".vcf.gz",
+    ".vcf",
+    ".gff.gz",
+    ".gff3.gz",
+    ".gff",
+    ".gff3",
+}
+
+# Maps file extension to the JBrowse2 track type it unambiguously implies.
+_EXTENSION_TO_TRACK_TYPE: dict[str, str] = {
+    ".bam": "bam",
+    ".cram": "cram",
+    ".bw": "bigwig",
+    ".bigwig": "bigwig",
+    ".vcf.gz": "vcf",
+    ".vcf": "vcf",
+    ".gff.gz": "gff",
+    ".gff3.gz": "gff",
+    ".gff": "gff",
+    ".gff3": "gff",
+}
+
 # File extensions that require an explicit index file alongside the main file.
 _INDEX_EXTENSIONS = {
     ".bam": (".bai", "BAI index"),
@@ -20,6 +48,31 @@ _INDEX_EXTENSIONS = {
     ".gff.gz": (".tbi", "TBI index"),
     ".gff3.gz": (".tbi", "TBI index"),
 }
+
+
+def _is_jbrowse_compatible(file_path: str) -> bool:
+    lower = file_path.lower()
+    return any(lower.endswith(ext) for ext in _TRACK_EXTENSIONS)
+
+
+def _infer_track_type(file_path: str) -> str | None:
+    """Return the track type implied by the file extension, or None if ambiguous."""
+    lower = file_path.lower()
+    for ext, track_type in _EXTENSION_TO_TRACK_TYPE.items():
+        if lower.endswith(ext):
+            return track_type
+    return None
+
+
+def _default_track_name(file_path: str) -> str:
+    """Derive a display name from the filename by stripping all recognised extensions."""
+    name = Path(file_path).name
+    lower = name.lower()
+    for ext in sorted(_TRACK_EXTENSIONS, key=len, reverse=True):
+        if lower.endswith(ext):
+            return name[: -len(ext)]
+    # Fallback: strip one extension.
+    return Path(name).stem
 
 
 def _needs_index_prompt(file_path: str) -> tuple[str, str] | None:
@@ -49,46 +102,59 @@ class FileSelector:
         project = next(p for p in projects if p.name == project_name)
 
         datasets = list(project.list_datasets())
-        dataset_name = questionary.select(
+        dataset_map = {f"{d.name}  ({d.id})": d for d in datasets}
+        dataset_key = questionary.autocomplete(
             "Select a dataset:",
-            choices=[d.name for d in datasets],
+            choices=list(dataset_map.keys()),
+            match_middle=True,
         ).ask()
-        dataset = next(d for d in datasets if d.name == dataset_name)
+        dataset = dataset_map[dataset_key]
 
         files = list(dataset.list_files())
-        file_paths = [f.relative_path for f in files]
+        file_paths = [f.relative_path for f in files if _is_jbrowse_compatible(f.relative_path)]
 
         selected_paths = questionary.checkbox(
             "Select files to include as tracks:",
             choices=file_paths,
         ).ask()
 
+        customize_names = questionary.confirm(
+            "Customize track display names?",
+            default=False,
+        ).ask()
+
+        needs_index = any(_needs_index_prompt(p) for p in selected_paths)
+        customize_indices = needs_index and questionary.confirm(
+            "Provide custom index file paths? (skip to let generator infer)",
+            default=False,
+        ).ask()
+
         track_specs: list[dict] = []
         for path in selected_paths:
-            track_type = questionary.select(
-                f"Track type for {path}:",
-                choices=TRACK_TYPE_CHOICES,
-            ).ask()
+            inferred_type = _infer_track_type(path)
+            if inferred_type is not None:
+                track_type = inferred_type
+            else:
+                track_type = questionary.select(
+                    f"Track type for {path}:",
+                    choices=TRACK_TYPE_CHOICES,
+                ).ask()
 
-            default_name = Path(path).stem
-            name = questionary.text(
-                f"Display name for {path}:",
-                default=default_name,
-            ).ask()
+            if customize_names:
+                name = questionary.text(
+                    f"Display name for {path}:",
+                    default=_default_track_name(path),
+                ).ask()
+            else:
+                name = _default_track_name(path)
 
             index_path: str | None = None
-            index_info = _needs_index_prompt(path)
-            if index_info is not None:
-                expected_ext, label = index_info
-                specify = questionary.confirm(
-                    f"Specify the {label} for {path} explicitly? (skip to let generator infer)",
-                    default=False,
+            if customize_indices and _needs_index_prompt(path) is not None:
+                _, label = _needs_index_prompt(path)
+                index_path = questionary.select(
+                    f"Select {label} for {Path(path).name}:",
+                    choices=file_paths,
                 ).ask()
-                if specify:
-                    index_path = questionary.select(
-                        f"Select {label} file:",
-                        choices=file_paths,
-                    ).ask()
 
             spec: dict = {
                 "project_id": project.id,
@@ -106,36 +172,64 @@ class FileSelector:
         assembly_fasta: Optional[dict] = None
         has_fasta = questionary.confirm("Do you have a reference FASTA?", default=False).ask()
         if has_fasta:
-            fasta_projects = list(self.portal.list_projects())
-            fasta_project_name = questionary.select(
-                "Select project containing the FASTA:",
-                choices=[p.name for p in fasta_projects],
-            ).ask()
-            fasta_project = next(p for p in fasta_projects if p.name == fasta_project_name)
-
-            fasta_datasets = list(fasta_project.list_datasets())
-            fasta_dataset_name = questionary.select(
-                "Select dataset containing the FASTA:",
-                choices=[d.name for d in fasta_datasets],
-            ).ask()
-            fasta_dataset = next(d for d in fasta_datasets if d.name == fasta_dataset_name)
-
-            fasta_files = list(fasta_dataset.list_files())
-            fasta_file_path = questionary.select(
-                "Select the FASTA file:",
-                choices=[f.relative_path for f in fasta_files],
+            fasta_source = questionary.select(
+                "How would you like to provide the reference FASTA?",
+                choices=["Enter S3 URI directly", "Select from a Cirro dataset"],
             ).ask()
 
-            assembly_fasta = {
-                "project_id": fasta_project.id,
-                "dataset_id": fasta_dataset.id,
-                "file_path": fasta_file_path,
-            }
+            if fasta_source == "Enter S3 URI directly":
+                fasta_uri = questionary.text("S3 URI for the FASTA file:").ask()
+                assembly_fasta = {"url": fasta_uri}
+                fai_uri = questionary.text(
+                    "FAI index URI:",
+                    default=fasta_uri + ".fai",
+                ).ask()
+                assembly_fai: Optional[dict] = {"url": fai_uri}
+            else:
+                fasta_projects = list(self.portal.list_projects())
+                fasta_project_name = questionary.select(
+                    "Select project containing the FASTA:",
+                    choices=[p.name for p in fasta_projects],
+                ).ask()
+                fasta_project = next(p for p in fasta_projects if p.name == fasta_project_name)
+
+                fasta_datasets = list(fasta_project.list_datasets())
+                fasta_dataset_map = {f"{d.name}  ({d.id})": d for d in fasta_datasets}
+                fasta_dataset_key = questionary.autocomplete(
+                    "Select dataset containing the FASTA:",
+                    choices=list(fasta_dataset_map.keys()),
+                    match_middle=True,
+                ).ask()
+                fasta_dataset = fasta_dataset_map[fasta_dataset_key]
+
+                fasta_files = list(fasta_dataset.list_files())
+                fasta_file_path = questionary.select(
+                    "Select the FASTA file:",
+                    choices=[f.relative_path for f in fasta_files],
+                ).ask()
+
+                assembly_fasta = {
+                    "project_id": fasta_project.id,
+                    "dataset_id": fasta_dataset.id,
+                    "file_path": fasta_file_path,
+                }
+                fai_file_path = questionary.text(
+                    "FAI index file path (within same dataset):",
+                    default=fasta_file_path + ".fai",
+                ).ask()
+                assembly_fai = {
+                    "project_id": fasta_project.id,
+                    "dataset_id": fasta_dataset.id,
+                    "file_path": fai_file_path,
+                }
+        else:
+            assembly_fai = None
 
         inputs = self._build_inputs(
             assembly_name=assembly_name,
             track_specs=track_specs,
             assembly_fasta=assembly_fasta,
+            assembly_fai=assembly_fai,
         )
         output_path = Path(output_path)
         output_path.write_text(json.dumps(inputs, indent=2))
@@ -168,15 +262,28 @@ class FileSelector:
         assembly_name: str,
         track_specs: list[dict],
         assembly_fasta: Optional[dict] = None,
+        assembly_fai: Optional[dict] = None,
     ) -> dict:
         """Shared: build and validate the inputs dict from resolved selections."""
         assembly: dict = {"name": assembly_name}
         if assembly_fasta is not None:
-            assembly["sequence"] = _make_file_ref(
-                assembly_fasta["project_id"],
-                assembly_fasta["dataset_id"],
-                assembly_fasta["file_path"],
-            )
+            if "url" in assembly_fasta:
+                assembly["sequence"] = {"url": assembly_fasta["url"]}
+            else:
+                assembly["sequence"] = _make_file_ref(
+                    assembly_fasta["project_id"],
+                    assembly_fasta["dataset_id"],
+                    assembly_fasta["file_path"],
+                )
+        if assembly_fai is not None:
+            if "url" in assembly_fai:
+                assembly["fai"] = {"url": assembly_fai["url"]}
+            else:
+                assembly["fai"] = _make_file_ref(
+                    assembly_fai["project_id"],
+                    assembly_fai["dataset_id"],
+                    assembly_fai["file_path"],
+                )
 
         tracks = []
         for spec in track_specs:

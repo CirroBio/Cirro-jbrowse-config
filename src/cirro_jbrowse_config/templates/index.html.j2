@@ -13,9 +13,47 @@
   <div id="root"></div>
   <!-- The JBrowse2 UMD bundle is self-contained: it bundles its own React 18.
        Do NOT load React/ReactDOM from CDN — a second copy causes hook dispatcher conflicts. -->
-  <script src="https://unpkg.com/@jbrowse/react-linear-genome-view2/dist/react-linear-genome-view.umd.production.min.js" crossorigin></script>
+  <script src="./react-linear-genome-view.umd.production.min.js"></script>
   <script>
     const { createViewState, JBrowseLinearGenomeView, React, createRoot } = JBrowseReactLinearGenomeView;
+
+    function getUrlLocation() {
+      return new URLSearchParams(window.location.search).get('loc') || undefined;
+    }
+
+    function startLocationSync(state) {
+      let lastLoc = null;
+      setInterval(() => {
+        try {
+          const view = state.session.view;
+          const blocks = view.dynamicBlocks?.contentBlocks;
+          if (!blocks?.length) return;
+          const refName = blocks[0].refName;
+          const rawStart = blocks[0].start;
+          const rawEnd = blocks[blocks.length - 1].end;
+          // When zoom is animating, bpPerPx hasn't committed yet but scaleFactor
+          // reflects the CSS zoom applied to the rendered tracks. Adjust the range
+          // so the URL stays in sync with what the user actually sees.
+          const sf = view.scaleFactor;
+          let start, end;
+          if (sf && Math.abs(sf - 1) > 0.01) {
+            const center = (rawStart + rawEnd) / 2;
+            const halfBp = (rawEnd - rawStart) / 2 / sf;
+            start = Math.round(center - halfBp) + 1;
+            end = Math.round(center + halfBp);
+          } else {
+            start = Math.round(rawStart) + 1;
+            end = Math.round(rawEnd);
+          }
+          const loc = `${refName}:${start}..${end}`;
+          if (loc === lastLoc) return;
+          lastLoc = loc;
+          const params = new URLSearchParams(window.location.search);
+          params.set('loc', loc);
+          history.replaceState(null, '', '?' + params.toString());
+        } catch (_) {}
+      }, 400);
+    }
 
     fetch("{{ config_json_path }}")
       .then(r => r.json())
@@ -24,7 +62,7 @@
           assembly: config.assemblies[0],
           tracks: config.tracks,
           configuration: config.configuration || {},
-          location: config.defaultLocation || undefined,
+          location: getUrlLocation() || config.defaultLocation || undefined,
         });
 
         // Activate all configured tracks using the embedded component API.
@@ -36,6 +74,7 @@
           });
         }
 
+        startLocationSync(state);
         const root = createRoot(document.getElementById("root"));
         root.render(React.createElement(JBrowseLinearGenomeView, { viewState: state }));
       })

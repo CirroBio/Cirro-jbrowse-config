@@ -101,5 +101,65 @@
         }
       }
     }
-  ]
+  ],
+  "defaultSession": {
+    "name": "default",
+    "views": [
+      {
+        "id": "default_view",
+        "type": "LinearGenomeView",
+        "tracks": [
+          {
+            "id": "volvox_alignments_session",
+            "type": "AlignmentsTrack",
+            "configuration": "volvox_alignments",
+            "displays": [
+              {
+                "id": "volvox_alignments_display",
+                "type": "LinearAlignmentsDisplay",
+                "configuration": "volvox_alignments-LinearAlignmentsDisplay"
+              }
+            ]
+          },
+          {
+            "id": "volvox_coverage_session",
+            "type": "QuantitativeTrack",
+            "configuration": "volvox_coverage",
+            "displays": [
+              {
+                "id": "volvox_coverage_display",
+                "type": "LinearWiggleDisplay",
+                "configuration": "volvox_coverage-LinearWiggleDisplay"
+              }
+            ]
+          },
+          {
+            "id": "volvox_variants_session",
+            "type": "VariantTrack",
+            "configuration": "volvox_variants",
+            "displays": [
+              {
+                "id": "volvox_variants_display",
+                "type": "LinearVariantDisplay",
+                "configuration": "volvox_variants-LinearVariantDisplay"
+              }
+            ]
+          },
+          {
+            "id": "volvox_genes_session",
+            "type": "FeatureTrack",
+            "configuration": "volvox_genes",
+            "displays": [
+              {
+                "id": "volvox_genes_display",
+                "type": "LinearBasicDisplay",
+                "configuration": "volvox_genes-LinearBasicDisplay"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "defaultLocation": "ctgA:1..50001"
 }

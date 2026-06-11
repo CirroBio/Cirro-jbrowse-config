@@ -1,8 +1,12 @@
 .venv
 .pytest_cache
+react-linear-genome-view.umd.production.min.js
 __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
 build/
 .eggs/
+.claude
+jbrowse-site
+inputs.json
