@@ -101,32 +101,6 @@ _DISPLAY_TYPE: dict[str, str] = {
 }
 
 
-def _build_default_session(tracks: list[dict]) -> dict:
-    """Build a JBrowse2 defaultSession that activates all configured tracks."""
-    session_tracks = []
-    for track in tracks:
-        track_id = track["trackId"]
-        track_type = track["type"]
-        display_type = _DISPLAY_TYPE.get(track_type, "LinearBasicDisplay")
-        session_tracks.append({
-            "id": f"{track_id}_session",
-            "type": track_type,
-            "configuration": track_id,
-            "displays": [{
-                "id": f"{track_id}_display",
-                "type": display_type,
-                "configuration": f"{track_id}-{display_type}",
-            }],
-        })
-    return {
-        "name": "default",
-        "views": [{
-            "id": "default_view",
-            "type": "LinearGenomeView",
-            "tracks": session_tracks,
-        }],
-    }
-
 
 def generate_assets(
     inputs: dict,
@@ -155,12 +129,15 @@ def generate_assets(
     tracks = []
     for raw_track in inputs.get("tracks", []):
         resolved_spec = resolve_track_spec(raw_track, url_resolver)
-        tracks.append(build_track(resolved_spec, assembly_name))
+        track = build_track(resolved_spec, assembly_name)
+        display_type = _DISPLAY_TYPE.get(track["type"])
+        if display_type:
+            track["displays"] = [{"type": display_type, "displayId": f"{track['trackId']}-{display_type}"}]
+        tracks.append(track)
 
     config: dict = {
         "assemblies": [jbrowse_assembly],
         "tracks": tracks,
-        "defaultSession": _build_default_session(tracks),
     }
     if "defaultLocation" in inputs:
         config["defaultLocation"] = inputs["defaultLocation"]
