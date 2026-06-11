@@ -9,9 +9,12 @@ from cirro.helpers.preprocess_dataset import PreprocessDataset
 
 S3 = boto3.client("s3")
 
-# Lines in the execution log that name the reference FASTA look like:
-#   fasta                     : s3://bucket/path/to/genome.fa
-FASTA_LOG_PATTERN = re.compile(r"^  fasta\b.*(s3://\S+)", re.MULTILINE)
+# Match any S3 URI whose final extension is .fa / .fasta / .fna (optionally .gz),
+# not followed by another extension (e.g. excludes .fa.fai, .fasta.gz.fai).
+FASTA_URI_PATTERN = re.compile(
+    r"(s3://\S+\.(?:fa|fasta|fna)(?:\.gz)?)(?=\s|$)",
+    re.MULTILINE,
+)
 
 
 def parse_s3_uri(s3_uri):
@@ -71,8 +74,8 @@ def infer_name(s3_uri):
 
 def find_fasta_in_logs(s3_base):
     """
-    Read {s3_base}/artifacts/process.log and return the set of S3 URIs
-    found on lines matching FASTA_LOG_PATTERN.
+    Read {s3_base}/artifacts/process.log and return the set of FASTA S3 URIs
+    found by FASTA_URI_PATTERN.
     """
     log_uri = s3_base.rstrip("/") + "/artifacts/process.log"
     bucket, key = parse_s3_uri(log_uri)
@@ -81,7 +84,7 @@ def find_fasta_in_logs(s3_base):
         .read()
         .decode("utf-8", errors="replace")
     )
-    return {m.group(1) for m in FASTA_LOG_PATTERN.finditer(body)}
+    return {m.group(1) for m in FASTA_URI_PATTERN.finditer(body)}
 
 
 if __name__ == "__main__":
@@ -89,18 +92,24 @@ if __name__ == "__main__":
 
     ds.logger.info("Params: " + json.dumps(ds.params, default=str))
 
-    # Detect reference FASTA from execution logs of each input dataset
-    fasta_by_dataset = {}
-    for d in ds.metadata.get("inputs", []):
-        paths = find_fasta_in_logs(d["s3"])
-        if paths:
-            fasta_by_dataset[d["id"]] = paths
-            ds.logger.info(f"Dataset {d['id']}: found FASTA candidates {paths}")
+    # Resolve reference FASTA: use the form param if provided, otherwise scan logs
+    fasta_uri = ds.params.get("fasta") or None
+    if fasta_uri:
+        ds.logger.info(f"Using user-supplied reference FASTA: {fasta_uri}")
+    else:
+        fasta_by_dataset = {}
+        for d in ds.metadata.get("inputs", []):
+            paths = find_fasta_in_logs(d["s3"])
+            if paths:
+                fasta_by_dataset[d["id"]] = paths
+                ds.logger.info(f"Dataset {d['id']}: found FASTA candidates {paths}")
 
-    all_fasta = set().union(*fasta_by_dataset.values()) if fasta_by_dataset else set()
-    if len(all_fasta) > 1:
-        raise ValueError(f"Input datasets reference different FASTA files: {all_fasta}")
-    fasta_uri = next(iter(all_fasta), None)
+        all_fasta = set().union(*fasta_by_dataset.values()) if fasta_by_dataset else set()
+        if len(all_fasta) > 1:
+            raise ValueError(f"Input datasets reference different FASTA files: {all_fasta}")
+        fasta_uri = next(iter(all_fasta), None)
+        if not fasta_uri:
+            ds.logger.info("No reference FASTA found in execution logs")
 
     # Assembly
     assembly_name = ds.params.get("assembly_name")
@@ -110,6 +119,7 @@ if __name__ == "__main__":
             stem = stem[:-3]
         assembly_name = PurePosixPath(stem).stem
     assembly_name = assembly_name or "unknown"
+
     assembly = {"name": assembly_name}
     if fasta_uri:
         assembly["sequence"] = make_file_ref(fasta_uri)
@@ -117,8 +127,6 @@ if __name__ == "__main__":
         if s3_exists(fai_uri):
             assembly["fai"] = make_file_ref(fai_uri)
         ds.logger.info(f"Reference FASTA: {fasta_uri}")
-    else:
-        ds.logger.info("No reference FASTA found in execution logs")
 
     # Tracks
     tracks = []

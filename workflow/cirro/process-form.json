@@ -7,6 +7,13 @@
         "description": "Display name for the reference genome shown in the browser (e.g. GRCh38, hg38, mm10) (optional)",
         "type": "string"
       },
+      "fasta": {
+        "title": "Reference FASTA (optional)",
+        "description": "Reference genome FASTA file. If not provided, it will be detected from the input pipeline's execution logs.",
+        "type": "string",
+        "file": "**/*.f*",
+        "pathType": "dataset"
+      },
       "bam": {
         "title": "BAM Files",
         "description": "Alignment files in BAM format",
