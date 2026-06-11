@@ -6,12 +6,14 @@ process GENERATE_SITE {
 
     input:
     path inputs_json
+    path source_dir
 
     output:
     path '*'
 
     script:
     """
+    uv pip install --system "./${source_dir}"
     cirro-jbrowse-config generate \
         --inputs '${inputs_json}' \
         --output-dir .
@@ -24,6 +26,7 @@ workflow {
     }
 
     inputs_ch = channel.fromPath(params.inputs)
+    source_ch = channel.value(file(workflow.projectDir).parent)
 
-    GENERATE_SITE(inputs_ch)
+    GENERATE_SITE(inputs_ch, source_ch)
 }
