@@ -1,4 +1,9 @@
 {
   "inputs": "inputs.json",
-  "outdir": "$.dataset.dataPath"
+  "outdir": "$.dataset.dataPath",
+  "assembly_name": "$.dataset.params.assembly_name",
+  "bam": "$.dataset.params.bam",
+  "cram": "$.dataset.params.cram",
+  "vcf": "$.dataset.params.vcf",
+  "bigwig": "$.dataset.params.bigwig"
 }
