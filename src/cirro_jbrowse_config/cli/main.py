@@ -23,6 +23,17 @@ def _get_portal():
     return DataPortal()
 
 
+def _has_cirro_refs(data) -> bool:
+    """Return True if any file ref in the inputs data requires Cirro auth."""
+    if isinstance(data, dict):
+        if "project_id" in data:
+            return True
+        return any(_has_cirro_refs(v) for v in data.values())
+    if isinstance(data, list):
+        return any(_has_cirro_refs(item) for item in data)
+    return False
+
+
 def _parse_track(value: str) -> dict:
     """Parse a --track option string into a track dict.
 
@@ -163,9 +174,12 @@ def generate(inputs: str, output_dir: str) -> None:
             raise FileNotFoundError(f"inputs file not found: {inputs}")
         data = json.loads(inputs_path.read_text())
 
-        click.echo("Connecting to Cirro...")
-        portal = _get_portal()
-        url_resolver = make_presigned_resolver(portal)
+        if _has_cirro_refs(data):
+            click.echo("Connecting to Cirro...")
+            url_resolver = make_presigned_resolver(_get_portal())
+        else:
+            url_resolver = lambda ref: ref["url"]
+
         click.echo("Resolving file URLs and generating site assets...")
         out = generate_assets(data, output_dir, url_resolver)
         click.echo(f"Generated site at {out}")
@@ -190,9 +204,12 @@ def serve(inputs: str, output_dir: str, port: int) -> None:
             raise FileNotFoundError(f"inputs file not found: {inputs}")
         data = json.loads(inputs_path.read_text())
 
-        click.echo("Connecting to Cirro...")
-        portal = _get_portal()
-        url_resolver = make_presigned_resolver(portal)
+        if _has_cirro_refs(data):
+            click.echo("Connecting to Cirro...")
+            url_resolver = make_presigned_resolver(_get_portal())
+        else:
+            url_resolver = lambda ref: ref["url"]
+
         click.echo("Resolving file URLs and generating site assets...")
         out = generate_assets(data, output_dir, url_resolver)
 

@@ -403,7 +403,10 @@ class TestParseFasta:
 
 class TestServeCommand:
     def test_serve_generates_assets_and_creates_server(self, tmp_path):
-        inputs_data = {"assembly": {"name": "hg38"}, "tracks": []}
+        inputs_data = {
+            "assembly": {"name": "hg38"},
+            "tracks": [{"type": "bam", "name": "s", "file": {"project_id": "p", "dataset_id": "d", "file_path": "f.bam"}}],
+        }
         inputs_file = tmp_path / "inputs.json"
         inputs_file.write_text(json.dumps(inputs_data))
         output_dir = tmp_path / "site"

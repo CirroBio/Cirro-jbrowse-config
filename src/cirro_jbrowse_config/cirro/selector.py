@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import re
+from pathlib import Path, PurePosixPath
 from typing import Optional
 
+import boto3
 import questionary
 from cirro import DataPortal
 
@@ -49,6 +51,16 @@ _INDEX_EXTENSIONS = {
     ".gff3.gz": (".tbi", "TBI index"),
 }
 
+# Matches any S3 URI whose final extension is .fa / .fasta / .fna (optionally .gz),
+# not followed by another extension (e.g. excludes .fa.fai).
+FASTA_URI_PATTERN = re.compile(
+    r"(s3://\S+\.(?:fa|fasta|fna)(?:\.gz)?)(?=\s|$)",
+    re.MULTILINE,
+)
+
+# Detects Cirro-hosted paths: s3://bucket/{project_uuid}/{dataset_uuid}/...
+_CIRRO_S3_RE = re.compile(r"s3://[^/]+/([0-9a-f-]{36})/([0-9a-f-]{36})/(.+)")
+
 
 def _is_jbrowse_compatible(file_path: str) -> bool:
     lower = file_path.lower()
@@ -86,6 +98,52 @@ def _needs_index_prompt(file_path: str) -> tuple[str, str] | None:
 
 def _make_file_ref(project_id: str, dataset_id: str, file_path: str) -> dict:
     return {"project_id": project_id, "dataset_id": dataset_id, "file_path": file_path}
+
+
+def _make_file_ref_from_uri(s3_uri: str) -> dict:
+    """Build a FileRef from an S3 URI — CirroFileRef for Cirro paths, UrlFileRef otherwise."""
+    m = _CIRRO_S3_RE.match(s3_uri)
+    if m:
+        return {"project_id": m.group(1), "dataset_id": m.group(2), "file_path": m.group(3)}
+    return {"url": s3_uri}
+
+
+def _assembly_name_from_fasta(fasta_uri: str) -> str:
+    """Derive an assembly display name from a FASTA filename."""
+    stem = PurePosixPath(fasta_uri).name
+    if stem.endswith(".gz"):
+        stem = stem[:-3]
+    return PurePosixPath(stem).stem
+
+
+def _find_fasta_in_dataset(dataset) -> tuple[str | None, str | None]:
+    """
+    Read artifacts/process.log from the dataset and return (fasta_uri, fai_uri).
+
+    Returns (None, None) if the log is absent or contains no FASTA URIs.
+    Raises ValueError if multiple distinct FASTA URIs are found.
+    """
+    try:
+        body = dataset.get_logs()
+    except Exception:
+        return None, None
+
+    found = set(FASTA_URI_PATTERN.findall(body))
+    if not found:
+        return None, None
+    if len(found) > 1:
+        raise ValueError(f"Multiple FASTA files found in execution log: {found}")
+    fasta_uri = found.pop()
+
+    fai_uri = fasta_uri + ".fai"
+    if not fasta_uri.startswith("s3://pubweb-references/"):
+        try:
+            bucket, key = fai_uri.removeprefix("s3://").split("/", 1)
+            boto3.client("s3").head_object(Bucket=bucket, Key=key)
+        except Exception:
+            fai_uri = None
+
+    return fasta_uri, fai_uri
 
 
 class FileSelector:
@@ -167,63 +225,76 @@ class FileSelector:
                 spec["index_path"] = index_path
             track_specs.append(spec)
 
-        assembly_name = questionary.text("Assembly name (e.g. hg38):").ask()
+        # Auto-detect reference FASTA from execution log
+        detected_fasta_uri, detected_fai_uri = _find_fasta_in_dataset(dataset)
+
+        default_assembly = _assembly_name_from_fasta(detected_fasta_uri) if detected_fasta_uri else ""
+        assembly_name = questionary.text(
+            "Assembly name (e.g. hg38):",
+            default=default_assembly,
+        ).ask()
 
         assembly_fasta: Optional[dict] = None
-        has_fasta = questionary.confirm("Do you have a reference FASTA?", default=False).ask()
-        if has_fasta:
-            fasta_source = questionary.select(
-                "How would you like to provide the reference FASTA?",
-                choices=["Enter S3 URI directly", "Select from a Cirro dataset"],
-            ).ask()
+        assembly_fai: Optional[dict] = None
 
-            if fasta_source == "Enter S3 URI directly":
-                fasta_uri = questionary.text("S3 URI for the FASTA file:").ask()
-                assembly_fasta = {"url": fasta_uri}
-                fai_uri = questionary.text(
-                    "FAI index URI:",
-                    default=fasta_uri + ".fai",
-                ).ask()
-                assembly_fai: Optional[dict] = {"url": fai_uri}
-            else:
-                fasta_projects = list(self.portal.list_projects())
-                fasta_project_name = questionary.select(
-                    "Select project containing the FASTA:",
-                    choices=[p.name for p in fasta_projects],
-                ).ask()
-                fasta_project = next(p for p in fasta_projects if p.name == fasta_project_name)
-
-                fasta_datasets = list(fasta_project.list_datasets())
-                fasta_dataset_map = {f"{d.name}  ({d.id})": d for d in fasta_datasets}
-                fasta_dataset_key = questionary.autocomplete(
-                    "Select dataset containing the FASTA:",
-                    choices=list(fasta_dataset_map.keys()),
-                    match_middle=True,
-                ).ask()
-                fasta_dataset = fasta_dataset_map[fasta_dataset_key]
-
-                fasta_files = list(fasta_dataset.list_files())
-                fasta_file_path = questionary.select(
-                    "Select the FASTA file:",
-                    choices=[f.relative_path for f in fasta_files],
-                ).ask()
-
-                assembly_fasta = {
-                    "project_id": fasta_project.id,
-                    "dataset_id": fasta_dataset.id,
-                    "file_path": fasta_file_path,
-                }
-                fai_file_path = questionary.text(
-                    "FAI index file path (within same dataset):",
-                    default=fasta_file_path + ".fai",
-                ).ask()
-                assembly_fai = {
-                    "project_id": fasta_project.id,
-                    "dataset_id": fasta_dataset.id,
-                    "file_path": fai_file_path,
-                }
+        if detected_fasta_uri:
+            print(f"Detected reference FASTA from execution log: {detected_fasta_uri}")
+            assembly_fasta = _make_file_ref_from_uri(detected_fasta_uri)
+            if detected_fai_uri:
+                assembly_fai = _make_file_ref_from_uri(detected_fai_uri)
         else:
-            assembly_fai = None
+            has_fasta = questionary.confirm("Do you have a reference FASTA?", default=False).ask()
+            if has_fasta:
+                fasta_source = questionary.select(
+                    "How would you like to provide the reference FASTA?",
+                    choices=["Enter S3 URI directly", "Select from a Cirro dataset"],
+                ).ask()
+
+                if fasta_source == "Enter S3 URI directly":
+                    fasta_uri = questionary.text("S3 URI for the FASTA file:").ask()
+                    assembly_fasta = {"url": fasta_uri}
+                    fai_uri = questionary.text(
+                        "FAI index URI:",
+                        default=fasta_uri + ".fai",
+                    ).ask()
+                    assembly_fai = {"url": fai_uri}
+                else:
+                    fasta_projects = list(self.portal.list_projects())
+                    fasta_project_name = questionary.select(
+                        "Select project containing the FASTA:",
+                        choices=[p.name for p in fasta_projects],
+                    ).ask()
+                    fasta_project = next(p for p in fasta_projects if p.name == fasta_project_name)
+
+                    fasta_datasets = list(fasta_project.list_datasets())
+                    fasta_dataset_map = {f"{d.name}  ({d.id})": d for d in fasta_datasets}
+                    fasta_dataset_key = questionary.autocomplete(
+                        "Select dataset containing the FASTA:",
+                        choices=list(fasta_dataset_map.keys()),
+                        match_middle=True,
+                    ).ask()
+                    fasta_dataset = fasta_dataset_map[fasta_dataset_key]
+
+                    fasta_files = list(fasta_dataset.list_files())
+                    fasta_file_path = questionary.select(
+                        "Select the FASTA file:",
+                        choices=[f.relative_path for f in fasta_files],
+                    ).ask()
+
+                    assembly_fasta = {
+                        "project_id": fasta_project.id,
+                        "dataset_id": fasta_dataset.id,
+                        "file_path": fasta_file_path,
+                    }
+                    fai_file_path = questionary.text(
+                        "FAI index file path (within same dataset):",
+                        default=fasta_file_path + ".fai",
+                    ).ask()
+                    assembly_fai = {
+                        "project_id": fasta_project.id,
+                        "dataset_id": fasta_dataset.id,
+                        "file_path": fai_file_path,
+                    }
 
         inputs = self._build_inputs(
             assembly_name=assembly_name,
@@ -239,19 +310,43 @@ class FileSelector:
         self,
         output_path: str | Path,
         *,
-        assembly_name: str,
+        assembly_name: Optional[str] = None,
         tracks: list[dict],
         assembly_fasta: Optional[dict] = None,
+        assembly_fai: Optional[dict] = None,
     ) -> dict:
-        """Non-interactive mode for Nextflow: builds inputs.json from explicit params.
+        """Non-interactive mode: builds inputs.json from explicit params.
 
         Each entry in tracks must contain: project_id, dataset_id, file_path,
         track_type, name. Optionally: index_path.
+
+        If assembly_fasta is not provided, the reference FASTA is detected from
+        the first track's dataset execution log (artifacts/process.log).
+        If assembly_name is not provided, it is inferred from the FASTA filename.
         """
+        if assembly_fasta is None and tracks:
+            first = tracks[0]
+            try:
+                project = self.portal.get_project(first["project_id"])
+                dataset = project.get_dataset(first["dataset_id"])
+                detected_uri, detected_fai_uri = _find_fasta_in_dataset(dataset)
+                if detected_uri:
+                    if not assembly_name:
+                        assembly_name = _assembly_name_from_fasta(detected_uri)
+                    assembly_fasta = _make_file_ref_from_uri(detected_uri)
+                    if detected_fai_uri and assembly_fai is None:
+                        assembly_fai = _make_file_ref_from_uri(detected_fai_uri)
+            except Exception:
+                pass
+
+        if not assembly_name:
+            assembly_name = "unknown"
+
         inputs = self._build_inputs(
             assembly_name=assembly_name,
             track_specs=tracks,
             assembly_fasta=assembly_fasta,
+            assembly_fai=assembly_fai,
         )
         output_path = Path(output_path)
         output_path.write_text(json.dumps(inputs, indent=2))

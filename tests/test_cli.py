@@ -212,8 +212,39 @@ def test_select_non_interactive_missing_assembly(tmp_path):
 # generate
 # ---------------------------------------------------------------------------
 
-def test_generate_calls_generate_assets(tmp_path):
+def test_generate_url_only_skips_portal(tmp_path):
+    """When all refs are URLs, generate should not connect to Cirro."""
     inputs_data = {"assembly": {"name": "hg38"}, "tracks": []}
+    inputs_file = tmp_path / "inputs.json"
+    inputs_file.write_text(json.dumps(inputs_data))
+    output_dir = tmp_path / "site"
+
+    mock_out_path = Path(str(output_dir))
+
+    with (
+        patch("cirro_jbrowse_config.cli.main._get_portal") as mock_get_portal,
+        patch("cirro_jbrowse_config.cli.main.generate_assets", return_value=mock_out_path) as mock_gen,
+    ):
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["generate", "--inputs", str(inputs_file), "--output-dir", str(output_dir)],
+        )
+
+    assert result.exit_code == 0, result.output
+    mock_get_portal.assert_not_called()
+    (called_data, called_dir, called_resolver), _ = mock_gen.call_args
+    assert called_data == inputs_data
+    assert called_dir == str(output_dir)
+    assert str(output_dir) in result.output
+
+
+def test_generate_cirro_refs_uses_portal(tmp_path):
+    """When inputs contain CirroFileRefs, generate should connect to Cirro."""
+    inputs_data = {
+        "assembly": {"name": "hg38"},
+        "tracks": [{"type": "bam", "name": "s1", "file": {"project_id": "p", "dataset_id": "d", "file_path": "f.bam"}}],
+    }
     inputs_file = tmp_path / "inputs.json"
     inputs_file.write_text(json.dumps(inputs_data))
     output_dir = tmp_path / "site"
@@ -230,11 +261,7 @@ def test_generate_calls_generate_assets(tmp_path):
         runner = CliRunner()
         result = runner.invoke(
             main,
-            [
-                "generate",
-                "--inputs", str(inputs_file),
-                "--output-dir", str(output_dir),
-            ],
+            ["generate", "--inputs", str(inputs_file), "--output-dir", str(output_dir)],
         )
 
     assert result.exit_code == 0, result.output
