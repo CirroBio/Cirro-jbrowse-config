@@ -11,7 +11,7 @@ S3 = boto3.client("s3")
 
 # Lines in the execution log that name the reference FASTA look like:
 #   fasta                     : s3://bucket/path/to/genome.fa
-FASTA_LOG_PATTERN = re.compile(r"^  fasta.*(s3://\S+)", re.MULTILINE)
+FASTA_LOG_PATTERN = re.compile(r"^  fasta\b.*(s3://\S+)", re.MULTILINE)
 
 
 def parse_s3_uri(s3_uri):
