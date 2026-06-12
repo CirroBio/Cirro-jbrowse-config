@@ -27,6 +27,8 @@ def make_presigned_resolver(portal: DataPortal):
             url = file_ref["url"]
             if url.startswith(PUBWEB_S3_PREFIX):
                 return _render_service_url(url)
+            if url.startswith("s3://"):
+                return _presign_s3_uri(url)
             return url
         project = portal.get_project(file_ref["project_id"])
         dataset = project.get_dataset(file_ref["dataset_id"])
@@ -40,7 +42,7 @@ def make_render_service_resolver(portal: DataPortal):
     def resolve(file_ref: dict) -> str:
         if "url" in file_ref:
             url = file_ref["url"]
-            if url.startswith(PUBWEB_S3_PREFIX):
+            if url.startswith("s3://"):
                 return _render_service_url(url)
             return url
         project = portal.get_project(file_ref["project_id"])
