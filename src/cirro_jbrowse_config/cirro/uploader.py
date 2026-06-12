@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from cirro import DataPortal
-from cirro.sdk.exceptions import DataPortalAssetNotFound
 
 
 class DatasetUploader:

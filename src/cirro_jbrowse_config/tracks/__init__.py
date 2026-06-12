@@ -36,19 +36,21 @@ def resolve_track_spec(track_spec: dict, url_resolver: Callable[[dict], str]) ->
     if track_type == "cram":
         crai_url = url_resolver(track_spec["index"]) if "index" in track_spec else file_url + ".crai"
         raw_sa = track_spec.get("sequence_adapter", {})
-        seq_adapter: dict = {
-            "fasta_url": url_resolver(raw_sa["fasta"]),
-            "fai_url": url_resolver(raw_sa["fai"]),
-        }
-        if "gzi" in raw_sa:
-            seq_adapter["gzi_url"] = url_resolver(raw_sa["gzi"])
-        return {
+        resolved: dict = {
             "type": "cram",
             "name": name,
             "cram_url": file_url,
             "crai_url": crai_url,
-            "sequence_adapter": seq_adapter,
         }
+        if raw_sa:
+            seq_adapter: dict = {
+                "fasta_url": url_resolver(raw_sa["fasta"]),
+                "fai_url": url_resolver(raw_sa["fai"]),
+            }
+            if "gzi" in raw_sa:
+                seq_adapter["gzi_url"] = url_resolver(raw_sa["gzi"])
+            resolved["sequence_adapter"] = seq_adapter
+        return resolved
 
     if track_type == "bigwig":
         return {"type": "bigwig", "name": name, "bigwig_url": file_url}

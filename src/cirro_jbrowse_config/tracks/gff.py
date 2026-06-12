@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-import re
-
-from cirro_jbrowse_config.tracks.base import BaseTrack
-
-
-def _slugify(name: str) -> str:
-    return re.sub(r"[^a-z0-9_]", "_", name.lower())
+from cirro_jbrowse_config.tracks.base import BaseTrack, _slugify
 
 
 class GffTrack(BaseTrack):

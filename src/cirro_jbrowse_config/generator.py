@@ -29,7 +29,7 @@ def _build_assembly(assembly: dict) -> dict:
         seq_url: str = assembly["sequence_url"]
         lowered = seq_url.lower()
 
-        if lowered.endswith(".fa.gz") or lowered.endswith(".fasta.gz"):
+        if (lowered.endswith(".fa.gz") or lowered.endswith(".fasta.gz")) and "gzi_url" in assembly:
             adapter: dict = {
                 "type": "BgzipFastaAdapter",
                 "fastaLocation": _uri_location(seq_url),

@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 
 from cirro_jbrowse_config import schemas
+
+
+def _slugify(name: str) -> str:
+    return re.sub(r"[^a-z0-9_]", "_", name.lower())
 
 
 class BaseTrack(ABC):

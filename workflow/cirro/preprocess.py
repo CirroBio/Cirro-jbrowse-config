@@ -7,7 +7,7 @@ from pathlib import PurePosixPath
 from cirro.helpers.preprocess_dataset import PreprocessDataset
 
 
-S3 = boto3.client("s3")
+s3 = boto3.client("s3")
 
 # Match any S3 URI whose final extension is .fa / .fasta / .fna (optionally .gz),
 # not followed by another extension (e.g. excludes .fa.fai, .fasta.gz.fai).
@@ -44,7 +44,7 @@ def make_file_ref(s3_uri):
 def s3_exists(s3_uri):
     bucket, key = parse_s3_uri(s3_uri)
     try:
-        S3.head_object(Bucket=bucket, Key=key)
+        s3.head_object(Bucket=bucket, Key=key)
         return True
     except Exception:
         return False
@@ -80,7 +80,7 @@ def find_fasta_in_logs(s3_base):
     log_uri = s3_base.rstrip("/") + "/artifacts/process.log"
     bucket, key = parse_s3_uri(log_uri)
     body = (
-        S3.get_object(Bucket=bucket, Key=key)["Body"]
+        s3.get_object(Bucket=bucket, Key=key)["Body"]
         .read()
         .decode("utf-8", errors="replace")
     )
