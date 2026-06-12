@@ -25,20 +25,8 @@ def parse_s3_uri(s3_uri):
 
 
 def make_file_ref(s3_uri):
-    """
-    Build a FileRef dict from an S3 URI.
-
-    Cirro-hosted paths (s3://bucket/{project_uuid}/{dataset_uuid}/...) become
-    CirroFileRef so the generate step can issue presigned URLs.  Everything else
-    becomes a UrlFileRef used as-is.
-    """
-    m = re.match(
-        r"s3://[^/]+/([0-9a-f-]{36})/([0-9a-f-]{36})/(.+)",
-        s3_uri,
-    )
-    if m:
-        return {"project_id": m.group(1), "dataset_id": m.group(2), "file_path": m.group(3)}
-    return {"url": s3_uri}
+    url = "https://cirrobio.github.io/render-service-worker/s3/" + s3_uri.removeprefix("s3://")
+    return {"url": url}
 
 
 def s3_exists(s3_uri):
