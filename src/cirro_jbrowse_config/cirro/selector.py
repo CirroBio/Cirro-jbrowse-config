@@ -57,6 +57,7 @@ FASTA_URI_PATTERN = re.compile(
     r"(s3://\S+\.(?:fa|fasta|fna)(?:\.gz)?)(?=\s|$)",
     re.MULTILINE,
 )
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 # Detects Cirro-hosted paths: s3://bucket/{project_uuid}/{dataset_uuid}/...
 _CIRRO_S3_RE = re.compile(r"s3://[^/]+/([0-9a-f-]{36})/([0-9a-f-]{36})/(.+)")
@@ -128,7 +129,7 @@ def _find_fasta_in_dataset(dataset) -> tuple[str | None, str | None]:
     except Exception:
         return None, None
 
-    found = set(FASTA_URI_PATTERN.findall(body))
+    found = set(FASTA_URI_PATTERN.findall(_ANSI_ESCAPE.sub("", body)))
     if not found:
         return None, None
     if len(found) > 1:

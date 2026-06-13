@@ -15,6 +15,7 @@ FASTA_URI_PATTERN = re.compile(
     r"(s3://\S+\.(?:fa|fasta|fna)(?:\.gz)?)(?=\s|$)",
     re.MULTILINE,
 )
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def parse_s3_uri(s3_uri):
@@ -72,7 +73,7 @@ def find_fasta_in_logs(s3_base):
         .read()
         .decode("utf-8", errors="replace")
     )
-    return {m.group(1) for m in FASTA_URI_PATTERN.finditer(body)}
+    return {m.group(1) for m in FASTA_URI_PATTERN.finditer(_ANSI_ESCAPE.sub("", body))}
 
 
 if __name__ == "__main__":
