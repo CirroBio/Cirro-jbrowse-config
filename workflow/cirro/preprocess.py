@@ -86,12 +86,17 @@ if __name__ == "__main__":
     if fasta_uri:
         ds.logger.info(f"Using user-supplied reference FASTA: {fasta_uri}")
     else:
+        input_datasets = ds.metadata.get("inputs", [])
+        ds.logger.info(f"Scanning execution logs of {len(input_datasets)} input dataset(s) for reference FASTA")
         fasta_by_dataset = {}
-        for d in ds.metadata.get("inputs", []):
+        for d in input_datasets:
+            ds.logger.info(f"Scanning dataset {d['id']} at {d['s3']}")
             paths = find_fasta_in_logs(d["s3"])
             if paths:
                 fasta_by_dataset[d["id"]] = paths
                 ds.logger.info(f"Dataset {d['id']}: found FASTA candidates {paths}")
+            else:
+                ds.logger.info(f"Dataset {d['id']}: no FASTA found in execution log")
 
         all_fasta = set().union(*fasta_by_dataset.values()) if fasta_by_dataset else set()
         if len(all_fasta) > 1:
@@ -102,33 +107,49 @@ if __name__ == "__main__":
 
     # Assembly
     assembly_name = ds.params.get("assembly_name")
-    if not assembly_name and fasta_uri:
+    if assembly_name:
+        ds.logger.info(f"Using user-supplied assembly name: {assembly_name}")
+    elif fasta_uri:
         stem = PurePosixPath(fasta_uri).name
         if stem.endswith(".gz"):
             stem = stem[:-3]
         assembly_name = PurePosixPath(stem).stem
+        ds.logger.info(f"Inferred assembly name from FASTA filename: {assembly_name}")
     assembly_name = assembly_name or "unknown"
 
     assembly = {"name": assembly_name}
     if fasta_uri:
         assembly["sequence"] = make_file_ref(fasta_uri)
+        ds.logger.info(f"Reference FASTA: {fasta_uri}")
         fai_uri = fasta_uri + ".fai"
         if s3_exists(fai_uri):
             assembly["fai"] = make_file_ref(fai_uri)
-        ds.logger.info(f"Reference FASTA: {fasta_uri}")
+            ds.logger.info(f"FAI index found: {fai_uri}")
+        else:
+            ds.logger.info(f"FAI index not found at {fai_uri} — omitting from assembly")
 
     # Tracks
     tracks = []
 
     for path in selected_paths(ds.params, "bam"):
+        ds.logger.info(f"BAM: {path}")
         idx = find_index(path, [".bai"])
+        if idx:
+            ds.logger.info(f"  index: {idx}")
+        else:
+            ds.logger.info(f"  index: not found, will be inferred as {path}.bai")
         track = {"type": "bam", "name": infer_name(path), "file": make_file_ref(path)}
         if idx:
             track["index"] = make_file_ref(idx)
         tracks.append(track)
 
     for path in selected_paths(ds.params, "cram"):
+        ds.logger.info(f"CRAM: {path}")
         idx = find_index(path, [".crai"])
+        if idx:
+            ds.logger.info(f"  index: {idx}")
+        else:
+            ds.logger.info(f"  index: not found, will be inferred as {path}.crai")
         track = {"type": "cram", "name": infer_name(path), "file": make_file_ref(path)}
         if idx:
             track["index"] = make_file_ref(idx)
@@ -137,18 +158,29 @@ if __name__ == "__main__":
                 "fasta": assembly["sequence"],
                 "fai": assembly["fai"],
             }
+            ds.logger.info(f"  sequence_adapter: attached from assembly FASTA")
+        else:
+            ds.logger.info(f"  sequence_adapter: not set (no assembly FASTA with FAI)")
         tracks.append(track)
 
     for path in selected_paths(ds.params, "vcf"):
+        ds.logger.info(f"VCF: {path}")
         idx = find_index(path, [".tbi", ".csi"])
+        if idx:
+            ds.logger.info(f"  index: {idx}")
+        else:
+            ds.logger.info(f"  index: not found, will be inferred as {path}.tbi")
         track = {"type": "vcf", "name": infer_name(path), "file": make_file_ref(path)}
         if idx:
             track["index"] = make_file_ref(idx)
         tracks.append(track)
 
     for path in selected_paths(ds.params, "bigwig"):
+        ds.logger.info(f"BigWig: {path}")
         track = {"type": "bigwig", "name": infer_name(path), "file": make_file_ref(path)}
         tracks.append(track)
+
+    ds.logger.info(f"Total tracks: {len(tracks)}")
 
     inputs_data = {"assembly": assembly, "tracks": tracks}
     ds.logger.info("inputs.json:\n" + json.dumps(inputs_data, indent=2))
