@@ -58,7 +58,7 @@ def selected_paths(params, key):
 
 def infer_name(s3_uri):
     """Derive a display name from the filename (strip the last dot-delimited segment)."""
-    return PurePosixPath(s3_uri).name.split(".", 1)[0]
+    return PurePosixPath(s3_uri).name.rsplit(".", 1)[0]
 
 
 def find_fasta_in_logs(s3_base):
