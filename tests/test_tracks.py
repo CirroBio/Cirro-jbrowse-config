@@ -9,6 +9,7 @@ from cirro_jbrowse_config.tracks.bam import BamTrack
 from cirro_jbrowse_config.tracks.bigwig import BigWigTrack
 from cirro_jbrowse_config.tracks.cram import CramTrack
 from cirro_jbrowse_config.tracks.gff import GffTrack
+from cirro_jbrowse_config.tracks.gtf import GtfTrack
 from cirro_jbrowse_config.tracks.vcf import VcfTrack
 
 
@@ -227,6 +228,63 @@ class TestGffTrack:
 
 
 # ---------------------------------------------------------------------------
+# GtfTrack
+# ---------------------------------------------------------------------------
+
+class TestGtfTrack:
+    def _spec(self):
+        return {
+            "name": "Annotations",
+            "gtf_gz_url": "https://example.com/annot.gtf.gz",
+            "tbi_url": "https://example.com/annot.gtf.gz.tbi",
+            "sequence_adapter": {
+                "fasta_url": "https://example.com/ref.fa",
+                "fai_url": "https://example.com/ref.fa.fai",
+            },
+        }
+
+    def test_type(self):
+        track = GtfTrack(self._spec(), ASSEMBLY).build()
+        assert track["type"] == "FeatureTrack"
+
+    def test_adapter_type(self):
+        track = GtfTrack(self._spec(), ASSEMBLY).build()
+        assert track["adapter"]["type"] == "GtfTabixAdapter"
+
+    def test_gtf_gz_location(self):
+        track = GtfTrack(self._spec(), ASSEMBLY).build()
+        assert track["adapter"]["gtfGzLocation"]["uri"] == "https://example.com/annot.gtf.gz"
+
+    def test_tbi_location(self):
+        track = GtfTrack(self._spec(), ASSEMBLY).build()
+        assert track["adapter"]["index"]["location"]["uri"] == "https://example.com/annot.gtf.gz.tbi"
+
+    def test_index_type_is_tbi(self):
+        track = GtfTrack(self._spec(), ASSEMBLY).build()
+        assert track["adapter"]["index"]["indexType"] == "TBI"
+
+    def test_sequence_adapter_indexed_fasta(self):
+        track = GtfTrack(self._spec(), ASSEMBLY).build()
+        sa = track["adapter"]["sequenceAdapter"]
+        assert sa["type"] == "IndexedFastaAdapter"
+        assert sa["fastaLocation"]["uri"] == "https://example.com/ref.fa"
+        assert sa["faiLocation"]["uri"] == "https://example.com/ref.fa.fai"
+
+    def test_sequence_adapter_bgzip_fasta(self):
+        spec = self._spec()
+        spec["sequence_adapter"]["gzi_url"] = "https://example.com/ref.fa.gz.gzi"
+        spec["sequence_adapter"]["fasta_url"] = "https://example.com/ref.fa.gz"
+        track = GtfTrack(spec, ASSEMBLY).build()
+        sa = track["adapter"]["sequenceAdapter"]
+        assert sa["type"] == "BgzipFastaAdapter"
+        assert sa["gziLocation"]["uri"] == "https://example.com/ref.fa.gz.gzi"
+
+    def test_assembly_names(self):
+        track = GtfTrack(self._spec(), ASSEMBLY).build()
+        assert track["assemblyNames"] == [ASSEMBLY]
+
+
+# ---------------------------------------------------------------------------
 # build_track dispatcher
 # ---------------------------------------------------------------------------
 
@@ -252,6 +310,21 @@ class TestBuildTrack:
         track = build_track(spec, ASSEMBLY)
         assert track["type"] == "FeatureTrack"
 
+    def test_dispatches_gtf(self):
+        spec = {
+            "type": "gtf",
+            "name": "A",
+            "gtf_gz_url": "https://example.com/a.gtf.gz",
+            "tbi_url": "https://example.com/a.gtf.gz.tbi",
+            "sequence_adapter": {
+                "fasta_url": "https://example.com/ref.fa",
+                "fai_url": "https://example.com/ref.fa.fai",
+            },
+        }
+        track = build_track(spec, ASSEMBLY)
+        assert track["type"] == "FeatureTrack"
+        assert track["adapter"]["type"] == "GtfTabixAdapter"
+
     def test_dispatches_cram(self):
         spec = {
             "type": "cram",
@@ -273,7 +346,7 @@ class TestBuildTrack:
             build_track({"type": "unknown", "name": "X"}, ASSEMBLY)
 
     def test_track_builders_registry_keys(self):
-        assert set(TRACK_BUILDERS.keys()) == {"bam", "cram", "bigwig", "vcf", "gff"}
+        assert set(TRACK_BUILDERS.keys()) == {"bam", "cram", "bigwig", "vcf", "gff", "gtf"}
 
 
 # ---------------------------------------------------------------------------

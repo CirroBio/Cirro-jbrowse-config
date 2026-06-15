@@ -180,6 +180,18 @@ if __name__ == "__main__":
         track = {"type": "bigwig", "name": infer_name(path), "file": make_file_ref(path)}
         tracks.append(track)
 
+    for path in selected_paths(ds.params, "gtf"):
+        ds.logger.info(f"GTF: {path}")
+        idx = find_index(path, [".tbi"])
+        if idx:
+            ds.logger.info(f"  index: {idx}")
+        else:
+            ds.logger.info(f"  index: not found, will be inferred as {path}.tbi")
+        track = {"type": "gtf", "name": infer_name(path), "file": make_file_ref(path)}
+        if idx:
+            track["index"] = make_file_ref(idx)
+        tracks.append(track)
+
     ds.logger.info(f"Total tracks: {len(tracks)}")
 
     inputs_data = {"assembly": assembly, "tracks": tracks}

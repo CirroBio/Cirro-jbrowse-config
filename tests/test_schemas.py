@@ -46,6 +46,13 @@ def test_load_track_schema_gff():
     assert "tbi_url" in schema["required"]
 
 
+def test_load_track_schema_gtf():
+    schema = load_schema("tracks/gtf")
+    assert "gtf_gz_url" in schema["required"]
+    assert "tbi_url" in schema["required"]
+    assert "sequence_adapter" in schema["required"]
+
+
 def test_validate_minimal_inputs(minimal_inputs):
     validate(minimal_inputs, "inputs")
 

@@ -57,7 +57,7 @@
       "required": ["type", "name", "file"],
       "additionalProperties": false,
       "properties": {
-        "type": { "type": "string", "enum": ["bam", "cram", "bigwig", "vcf", "gff"] },
+        "type": { "type": "string", "enum": ["bam", "cram", "bigwig", "vcf", "gff", "gtf"] },
         "name": { "type": "string" },
         "file": { "$ref": "#/$defs/FileRef" },
         "index": { "$ref": "#/$defs/FileRef" },

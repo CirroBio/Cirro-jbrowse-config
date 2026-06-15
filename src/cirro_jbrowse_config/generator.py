@@ -129,10 +129,11 @@ def generate_assets(
     tracks = []
     for raw_track in inputs.get("tracks", []):
         resolved_spec = resolve_track_spec(raw_track, url_resolver)
-        if resolved_spec["type"] == "cram" and "sequence_adapter" not in resolved_spec:
+        if resolved_spec["type"] in ("cram", "gtf") and "sequence_adapter" not in resolved_spec:
+            track_type_label = resolved_spec["type"].upper()
             if "sequence_url" not in resolved_assembly or "fai_url" not in resolved_assembly:
                 raise ValueError(
-                    "CRAM tracks require a reference FASTA with an FAI index. "
+                    f"{track_type_label} tracks require a reference FASTA with an FAI index. "
                     "Provide an assembly with both 'sequence' and 'fai' fields."
                 )
             sa: dict = {
