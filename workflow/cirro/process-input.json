@@ -6,5 +6,6 @@
   "bam": "$.dataset.params.bam",
   "cram": "$.dataset.params.cram",
   "vcf": "$.dataset.params.vcf",
-  "bigwig": "$.dataset.params.bigwig"
+  "bigwig": "$.dataset.params.bigwig",
+  "gtf": "$.dataset.params.gtf"
 }

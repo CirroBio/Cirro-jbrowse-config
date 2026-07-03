@@ -45,6 +45,14 @@
         "multiple": true,
         "file": "**/*.bigWig",
         "pathType": "dataset"
+      },
+      "gtf": {
+        "title": "GTF Files",
+        "description": "Gene annotations in bgzipped, tabix-indexed GTF format",
+        "type": "string",
+        "multiple": true,
+        "file": "**/*.gtf.gz",
+        "pathType": "dataset"
       }
     }
   },
