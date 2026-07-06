@@ -8,7 +8,6 @@ from cirro_jbrowse_config.tracks.bam import BamTrack
 from cirro_jbrowse_config.tracks.bigwig import BigWigTrack
 from cirro_jbrowse_config.tracks.cram import CramTrack
 from cirro_jbrowse_config.tracks.gff import GffTrack
-from cirro_jbrowse_config.tracks.gtf import GtfTrack
 from cirro_jbrowse_config.tracks.vcf import VcfTrack
 
 TRACK_BUILDERS = {
@@ -17,7 +16,6 @@ TRACK_BUILDERS = {
     "bigwig": BigWigTrack,
     "vcf": VcfTrack,
     "gff": GffTrack,
-    "gtf": GtfTrack,
 }
 
 
@@ -64,20 +62,6 @@ def resolve_track_spec(track_spec: dict, url_resolver: Callable[[dict], str]) ->
     if track_type == "gff":
         tbi_url = url_resolver(track_spec["index"]) if "index" in track_spec else file_url + ".tbi"
         return {"type": "gff", "name": name, "gff_gz_url": file_url, "tbi_url": tbi_url}
-
-    if track_type == "gtf":
-        tbi_url = url_resolver(track_spec["index"]) if "index" in track_spec else file_url + ".tbi"
-        resolved: dict = {"type": "gtf", "name": name, "gtf_gz_url": file_url, "tbi_url": tbi_url}
-        raw_sa = track_spec.get("sequence_adapter", {})
-        if raw_sa:
-            seq_adapter: dict = {
-                "fasta_url": url_resolver(raw_sa["fasta"]),
-                "fai_url": url_resolver(raw_sa["fai"]),
-            }
-            if "gzi" in raw_sa:
-                seq_adapter["gzi_url"] = url_resolver(raw_sa["gzi"])
-            resolved["sequence_adapter"] = seq_adapter
-        return resolved
 
     raise ValueError(f"Unknown track type: {track_type!r}")
 

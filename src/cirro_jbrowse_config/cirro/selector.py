@@ -26,8 +26,6 @@ _TRACK_EXTENSIONS = {
     ".gff3.gz",
     ".gff",
     ".gff3",
-    ".gtf.gz",
-    ".gtf",
 }
 
 # Maps file extension to the JBrowse2 track type it unambiguously implies.
@@ -42,8 +40,6 @@ _EXTENSION_TO_TRACK_TYPE: dict[str, str] = {
     ".gff3.gz": "gff",
     ".gff": "gff",
     ".gff3": "gff",
-    ".gtf.gz": "gtf",
-    ".gtf": "gtf",
 }
 
 # File extensions that require an explicit index file alongside the main file.
@@ -53,7 +49,6 @@ _INDEX_EXTENSIONS = {
     ".vcf.gz": (".tbi", "TBI index"),
     ".gff.gz": (".tbi", "TBI index"),
     ".gff3.gz": (".tbi", "TBI index"),
-    ".gtf.gz": (".tbi", "TBI index"),
 }
 
 # Matches any S3 URI whose final extension is .fa / .fasta / .fna (optionally .gz),
