@@ -26,7 +26,7 @@ workflow {
     }
 
     inputs_ch = channel.fromPath(params.inputs)
-    source_ch = channel.value(file(workflow.projectDir).parent)
+    source_ch = channel.value(file(workflow.projectDir))
 
     GENERATE_SITE(inputs_ch, source_ch)
 }
