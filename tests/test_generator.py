@@ -135,6 +135,14 @@ class TestConfigJson:
         index_uri = config["tracks"][0]["adapter"]["index"]["location"]["uri"]
         assert index_uri == "https://example.com/s.bam.bai"
 
+    def test_bam_track_display_includes_coverage(self, tmp_path, bam_track_inputs):
+        # LinearAlignmentsDisplay stacks SNP coverage above the pileup; pinning the
+        # bare LinearPileupDisplay instead drops the coverage histogram.
+        config = self._load(tmp_path, bam_track_inputs)
+        displays = config["tracks"][0]["displays"]
+        assert [d["type"] for d in displays] == ["LinearAlignmentsDisplay"]
+        assert displays[0]["displayId"] == "sample_bam-LinearAlignmentsDisplay"
+
 
 # ---------------------------------------------------------------------------
 # Assembly adapter selection
