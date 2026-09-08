@@ -93,8 +93,10 @@ def _resolve_assembly(assembly_spec: dict, url_resolver: Callable[[dict], str]) 
     return resolved
 
 
+# JBrowse's showTrack() activates the first display listed on a track config, so
+# AlignmentsTrack must name the composite display to get SNP coverage above the pileup.
 _DISPLAY_TYPE: dict[str, str] = {
-    "AlignmentsTrack": "LinearPileupDisplay",
+    "AlignmentsTrack": "LinearAlignmentsDisplay",
     "QuantitativeTrack": "LinearWiggleDisplay",
     "VariantTrack": "LinearVariantDisplay",
     "FeatureTrack": "LinearBasicDisplay",
